@@ -1,8 +1,13 @@
 {
   "expo": {
-    "name": "shoudo-stopper",
+    "name": "衝動買いストッパー",
+    "description": "衝動買いの前に3問チェックして、買うかどうかを落ち着いて判断するためのアプリです。",
     "slug": "shoudo-stopper",
     "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "web"
+    ],
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -13,7 +18,12 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.jikoukan.shoudostopper",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
