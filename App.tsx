@@ -3,16 +3,23 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useEffect, useMemo, useState } from 'react';
+import Purchases, { LOG_LEVEL } from 'react-native-purchases';
 import {
   Alert,
+  Linking,
   Platform,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   Pressable,
   View,
 } from 'react-native';
+
+declare const process: {
+  env?: Record<string, string | undefined>;
+};
 
 type Screen =
   | 'home'
@@ -79,8 +86,16 @@ const STORAGE_KEY = 'shoudo_stop_purchase_checks';
 const FREE_HISTORY_LIMIT = 5;
 const APP_VERSION = '1.0.0';
 const PRO_PRICE_LABEL = '250円 買い切り';
-const LEGAL_URL_STATUS = '審査前にURL差し替え';
-const CONTACT_URL_STATUS = '正式URL準備中';
+const TERMS_URL = 'https://kk-0526.github.io/Shoudo/TERMS';
+const PRIVACY_URL = 'https://kk-0526.github.io/Shoudo/PRIVACY';
+const CONTACT_URL = '';
+const REVENUECAT_ENTITLEMENT_ID = 'pro';
+const REVENUECAT_PRODUCT_ID = 'shoudo_stop_pro_lifetime';
+const REVENUECAT_IOS_API_KEY =
+  process.env?.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? '';
+
+type RevenueCatCustomerInfo = Awaited<ReturnType<typeof Purchases.getCustomerInfo>>;
+type RevenueCatPackage = Parameters<typeof Purchases.purchasePackage>[0];
 
 const categories: Option<Category>[] = [
   { label: '食品', value: 'food' },
@@ -209,11 +224,20 @@ async function loadChecks(): Promise<PurchaseCheck[]> {
   }
 }
 
-async function saveFreeCheck(check: PurchaseCheck): Promise<number> {
+async function saveFreeCheck(
+  check: PurchaseCheck,
+  hasProAccess: boolean,
+): Promise<number> {
   const checks = await loadChecks();
-  const nextChecks = [check, ...checks].slice(0, FREE_HISTORY_LIMIT);
+  const nextChecks = hasProAccess
+    ? [check, ...checks]
+    : [check, ...checks].slice(0, FREE_HISTORY_LIMIT);
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(nextChecks));
   return nextChecks.length;
+}
+
+function hasActiveProEntitlement(customerInfo: RevenueCatCustomerInfo): boolean {
+  return customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
 }
 
 export default function App() {
@@ -229,9 +253,18 @@ export default function App() {
   const [checks, setChecks] = useState<PurchaseCheck[]>([]);
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const [isProPreview, setIsProPreview] = useState(false);
+  const [isRevenueCatPro, setIsRevenueCatPro] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+  const [lifetimePackage, setLifetimePackage] = useState<RevenueCatPackage | null>(
+    null,
+  );
+
+  const hasProAccess = isProPreview || isRevenueCatPro;
 
   useEffect(() => {
     void refreshChecks();
+    void initializeRevenueCat();
   }, []);
 
   const canJudge = Boolean(input.category && input.priceRange && input.trigger);
@@ -289,6 +322,96 @@ export default function App() {
     setSavedCount(storedChecks.length);
   }
 
+  async function initializeRevenueCat() {
+    if (Platform.OS === 'web') {
+      setPurchaseMessage('WebではIAPを実行できません。Development Buildで確認します。');
+      return;
+    }
+
+    if (Platform.OS !== 'ios') {
+      setPurchaseMessage('Android対応はMVP後に追加します。');
+      return;
+    }
+
+    if (!REVENUECAT_IOS_API_KEY) {
+      setPurchaseMessage('RevenueCat iOS APIキー未設定です。');
+      return;
+    }
+
+    try {
+      await Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+      Purchases.configure({ apiKey: REVENUECAT_IOS_API_KEY });
+      const customerInfo = await Purchases.getCustomerInfo();
+      setIsRevenueCatPro(hasActiveProEntitlement(customerInfo));
+
+      const offerings = await Purchases.getOfferings();
+      const currentOffering = offerings.current;
+      const packageToPurchase =
+        currentOffering?.availablePackages.find(
+          (candidatePackage) =>
+            candidatePackage.product.identifier === REVENUECAT_PRODUCT_ID,
+        ) ??
+        currentOffering?.lifetime ??
+        currentOffering?.availablePackages[0] ??
+        null;
+
+      setLifetimePackage(packageToPurchase);
+      setPurchaseMessage(
+        packageToPurchase
+          ? 'RevenueCat連携準備完了'
+          : 'RevenueCat Offeringに購入商品がありません。',
+      );
+    } catch {
+      setPurchaseMessage('RevenueCat初期化に失敗しました。設定を確認してください。');
+    }
+  }
+
+  async function purchaseLifetime() {
+    if (!lifetimePackage) {
+      setPurchaseMessage('購入商品を取得できていません。');
+      return;
+    }
+
+    setIsPurchasing(true);
+    setPurchaseMessage(null);
+    try {
+      const { customerInfo } = await Purchases.purchasePackage(lifetimePackage);
+      const nextIsPro = hasActiveProEntitlement(customerInfo);
+      setIsRevenueCatPro(nextIsPro);
+      setPurchaseMessage(
+        nextIsPro ? '有料版が有効になりました。' : '購入状態を確認できませんでした。',
+      );
+    } catch (error: unknown) {
+      const purchaseError = error as { message?: string; userCancelled?: boolean };
+      setPurchaseMessage(
+        purchaseError.userCancelled
+          ? '購入をキャンセルしました。'
+          : '購入に失敗しました。時間をおいて再度お試しください。',
+      );
+    } finally {
+      setIsPurchasing(false);
+    }
+  }
+
+  async function restoreLifetimePurchase() {
+    setIsPurchasing(true);
+    setPurchaseMessage(null);
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      const nextIsPro = hasActiveProEntitlement(customerInfo);
+      setIsRevenueCatPro(nextIsPro);
+      setPurchaseMessage(
+        nextIsPro
+          ? '購入を復元しました。'
+          : '復元できる購入が見つかりませんでした。',
+      );
+    } catch {
+      setPurchaseMessage('購入復元に失敗しました。時間をおいて再度お試しください。');
+    } finally {
+      setIsPurchasing(false);
+    }
+  }
+
   function resetCheck() {
     setInput({ category: null, priceRange: null, trigger: null });
     setResult(null);
@@ -323,7 +446,7 @@ export default function App() {
       estimatedSavedAmount: action === 'skip' ? estimatedSavedAmount : 0,
     };
     setLastAction(action);
-    void saveFreeCheck(check).then(() => refreshChecks());
+    void saveFreeCheck(check, hasProAccess).then(() => refreshChecks());
   }
 
   async function exportCsv() {
@@ -365,6 +488,26 @@ export default function App() {
     setExportMessage('CSVエクスポートを実行しました。');
   }
 
+  async function shareStoppedPurchase(action: Action) {
+    if (!result || !input.category || !input.priceRange || !input.trigger) return;
+    if (action === 'buy') return;
+
+    const actionText = action === 'skip' ? '衝動買いを止めました' : '衝動買いを保留しました';
+    const savedText =
+      action === 'skip'
+        ? `\n推定節約額: ${estimatedSavedAmount.toLocaleString()}円`
+        : '';
+    const message = `${actionText}。\nカテゴリ: ${getOptionLabel(categories, input.category)}\n金額: ${getOptionLabel(priceRanges, input.priceRange)}\nきっかけ: ${getOptionLabel(triggers, input.trigger)}\n判定: ${result.label}${savedText}\n\n#衝動買いストッパー #節約`;
+
+    try {
+      await Share.share({ message });
+    } catch {
+      if (Platform.OS !== 'web') {
+        Alert.alert('エラー', 'シェアに失敗しました。');
+      }
+    }
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
@@ -393,12 +536,12 @@ export default function App() {
           <View style={styles.navGrid}>
             <NavTile
               label="履歴"
-              locked={!isProPreview}
+              locked={!hasProAccess}
               onPress={() => setScreen('history')}
             />
             <NavTile
               label="分析"
-              locked={!isProPreview}
+              locked={!hasProAccess}
               onPress={() => setScreen('analysis')}
             />
             <Pressable style={styles.navTile} onPress={() => setScreen('settings')}>
@@ -491,6 +634,19 @@ export default function App() {
             </View>
           )}
 
+          {lastAction && lastAction !== 'buy' && (
+            <Pressable
+              style={styles.shareButton}
+              onPress={() => {
+                void shareStoppedPurchase(lastAction);
+              }}
+            >
+              <Text style={styles.shareButtonText}>
+                {lastAction === 'skip' ? '止めたことをシェア' : '保留したことをシェア'}
+              </Text>
+            </Pressable>
+          )}
+
           <Pressable style={styles.secondaryButton} onPress={resetCheck}>
             <Text style={styles.secondaryButtonText}>もう一度チェックする</Text>
           </Pressable>
@@ -501,8 +657,27 @@ export default function App() {
         <ScrollView contentContainerStyle={styles.container}>
           <Header title="設定" onBack={() => setScreen('home')} />
           <View style={styles.settingsList}>
-            <SettingsRow label="有料版を購入" value={`${PRO_PRICE_LABEL} / IAP連携待ち`} />
-            <SettingsRow label="購入を復元" value="Apple Developer登録後に有効化" />
+            <SettingsButton
+              disabled={isPurchasing || !lifetimePackage}
+              label="有料版を購入"
+              value={
+                isRevenueCatPro
+                  ? '購入済み'
+                  : `${PRO_PRICE_LABEL} / ${isPurchasing ? '処理中' : '購入する'}`
+              }
+              onPress={() => {
+                void purchaseLifetime();
+              }}
+            />
+            <SettingsButton
+              disabled={isPurchasing}
+              label="購入を復元"
+              value={isPurchasing ? '処理中' : '復元する'}
+              onPress={() => {
+                void restoreLifetimePurchase();
+              }}
+            />
+            <SettingsRow label="RevenueCat状態" value={purchaseMessage ?? '確認中'} />
             <Pressable
               style={styles.settingsRow}
               onPress={() => setIsProPreview((current) => !current)}
@@ -512,9 +687,9 @@ export default function App() {
                 {isProPreview ? 'ON: 有料画面を表示中' : 'OFF: ロック表示'}
               </Text>
             </Pressable>
-            <SettingsRow label="利用規約" value={LEGAL_URL_STATUS} />
-            <SettingsRow label="プライバシーポリシー" value={LEGAL_URL_STATUS} />
-            <SettingsRow label="お問い合わせ" value={CONTACT_URL_STATUS} />
+            <SettingsLinkRow label="利用規約" url={TERMS_URL} />
+            <SettingsLinkRow label="プライバシーポリシー" url={PRIVACY_URL} />
+            <SettingsLinkRow label="お問い合わせ" url={CONTACT_URL} />
             <SettingsRow label="バージョン" value={APP_VERSION} />
           </View>
         </ScrollView>
@@ -523,7 +698,7 @@ export default function App() {
       {screen === 'history' && (
         <ScrollView contentContainerStyle={styles.container}>
           <Header title="履歴" onBack={() => setScreen('home')} />
-          {!isProPreview ? (
+          {!hasProAccess ? (
             <LockedFeature
               title="購入履歴タイムライン"
               description="3問チェックの履歴は端末内に保存されています。表示するには有料版が必要です。"
@@ -537,7 +712,7 @@ export default function App() {
       {screen === 'savings' && (
         <ScrollView contentContainerStyle={styles.container}>
           <Header title="節約カウンター" onBack={() => setScreen('home')} />
-          {!isProPreview ? (
+          {!hasProAccess ? (
             <LockedFeature
               title="節約できた金額カウンター"
               description="「やめる」を選んだ買い物の推定節約額を集計します。表示するには有料版が必要です。"
@@ -551,7 +726,7 @@ export default function App() {
       {screen === 'analysis' && (
         <ScrollView contentContainerStyle={styles.container}>
           <Header title="パターン分析" onBack={() => setScreen('home')} />
-          {!isProPreview ? (
+          {!hasProAccess ? (
             <LockedFeature
               title="カテゴリ別パターン分析"
               description="カテゴリやきっかけごとの傾向を表示します。表示するには有料版が必要です。"
@@ -565,7 +740,7 @@ export default function App() {
       {screen === 'export' && (
         <ScrollView contentContainerStyle={styles.container}>
           <Header title="CSVエクスポート" onBack={() => setScreen('home')} />
-          {!isProPreview ? (
+          {!hasProAccess ? (
             <LockedFeature
               title="CSVエクスポート"
               description="端末内に保存した購入前チェック履歴をCSVで保存できます。利用するには有料版が必要です。"
@@ -693,6 +868,47 @@ function SettingsRow({ label, value }: { label: string; value: string }) {
       <Text style={styles.settingsLabel}>{label}</Text>
       <Text style={styles.settingsValue}>{value}</Text>
     </View>
+  );
+}
+
+function SettingsButton({
+  disabled,
+  label,
+  onPress,
+  value,
+}: {
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+  value: string;
+}) {
+  return (
+    <Pressable
+      disabled={disabled}
+      style={[styles.settingsRow, disabled && styles.disabledSettingsRow]}
+      onPress={onPress}
+    >
+      <Text style={styles.settingsLabel}>{label}</Text>
+      <Text style={styles.settingsValue}>{value}</Text>
+    </Pressable>
+  );
+}
+
+function SettingsLinkRow({ label, url }: { label: string; url: string }) {
+  const hasUrl = url.trim().length > 0;
+
+  return (
+    <Pressable
+      disabled={!hasUrl}
+      style={[styles.settingsRow, !hasUrl && styles.disabledSettingsRow]}
+      onPress={() => {
+        if (!hasUrl) return;
+        void Linking.openURL(url);
+      }}
+    >
+      <Text style={styles.settingsLabel}>{label}</Text>
+      <Text style={styles.settingsValue}>{hasUrl ? url : '準備中'}</Text>
+    </Pressable>
   );
 }
 
@@ -985,6 +1201,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
   },
+  shareButton: {
+    alignItems: 'center',
+    backgroundColor: '#2f2421',
+    borderRadius: 8,
+    minHeight: 52,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  shareButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '800',
+  },
   summaryCard: {
     backgroundColor: '#ffffff',
     borderColor: '#f0ded8',
@@ -1247,6 +1476,9 @@ const styles = StyleSheet.create({
     color: '#7c6b66',
     fontSize: 13,
     marginTop: 4,
+  },
+  disabledSettingsRow: {
+    opacity: 0.55,
   },
   lockedFeatureCard: {
     backgroundColor: '#fff0e9',
