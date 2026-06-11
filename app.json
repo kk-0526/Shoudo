@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "衝動買いストッパー",
-    "description": "衝動買いの前に3問チェックして、買うかどうかを落ち着いて判断するためのアプリです。",
+    "description": "衝動買いの前に衝動買いチェックして、買うかどうかを落ち着いて判断するためのアプリです。",
     "slug": "shoudo-stopper",
     "version": "1.0.0",
     "platforms": [
@@ -15,7 +15,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FCFBF8"
     },
     "ios": {
       "supportsTablet": true,
@@ -35,6 +35,24 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c934214f-712a-45f5-b651-dd59cdfc51dc"
+      }
+    },
+    "owner": "kk0526",
+    "plugins": [
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#FCFBF8"
+        }
+      ]
+    ]
   }
 }

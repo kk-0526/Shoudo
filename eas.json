@@ -1,5 +1,8 @@
 {
-  "cli": { "version": ">= 14.0.0" },
+  "cli": {
+    "version": ">= 14.0.0",
+    "appVersionSource": "remote"
+  },
   "build": {
     "development": {
       "developmentClient": true,
@@ -8,9 +11,22 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {}
+    "production": {
+      "ios": {
+        "autoIncrement": true
+      }
+    }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "special_universe0526@yahoo.co.jp",
+        "ascAppId": "6774166947",
+        "appleTeamId": "K28Z5ZRP63",
+        "ascApiKeyId": "K4LD4HZGWZ",
+        "ascApiKeyIssuerId": "b219781f-25f6-45a1-ace9-8c9626331984",
+        "ascApiKeyPath": "C:\\PM\\keys\\AuthKey_K4LD4HZGWZ.p8"
+      }
+    }
   }
 }
