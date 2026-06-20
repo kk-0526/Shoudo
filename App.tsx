@@ -14,6 +14,8 @@ import {
   Animated,
   Image,
   ImageSourcePropType,
+  Keyboard,
+  KeyboardAvoidingView,
   Linking,
   Platform,
   SafeAreaView,
@@ -373,12 +375,19 @@ export default function App() {
     null,
   );
   const resultSlideY = useRef(new Animated.Value(24)).current;
+  const [kbHeight, setKbHeight] = useState(0);
 
   const hasProAccess = isProPreview || isRevenueCatPro;
 
   useEffect(() => {
     void refreshChecks();
     void initializeRevenueCat();
+  }, []);
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKbHeight(0));
+    return () => { show.remove(); hide.remove(); };
   }, []);
 
   useEffect(() => {
@@ -561,6 +570,7 @@ export default function App() {
     if (normalizedAmount === null) {
       setCustomPriceDraft('');
       setInput((current) => ({ ...current, customPriceAmount: '' }));
+      Keyboard.dismiss();
       return;
     }
     const normalizedPrice = String(normalizedAmount);
@@ -570,6 +580,7 @@ export default function App() {
       customPriceAmount: normalizedPrice,
       priceRange: getPriceRangeFromAmount(normalizedAmount),
     }));
+    Keyboard.dismiss();
   }
 
   function judge() {
@@ -615,7 +626,14 @@ export default function App() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       {screen === 'check' && (
-        <ScrollView contentContainerStyle={styles.container}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled"
+        >
           <BrandHeader onSettingsPress={() => setScreen('settings')} />
           <Header title="衝動買いチェック" />
           <View style={styles.ledgerPanel}>
@@ -781,6 +799,14 @@ export default function App() {
           )}
           <HomeSavingsCard stats={savingsStats} />
         </ScrollView>
+        {kbHeight > 0 && (
+          <View style={styles.kbDoneBar}>
+            <Pressable style={styles.kbDoneBtn} onPress={() => Keyboard.dismiss()}>
+              <Text style={styles.kbDoneBtnText}>完了</Text>
+            </Pressable>
+          </View>
+        )}
+        </KeyboardAvoidingView>
       )}
 
       {screen === 'settings' && (
@@ -2629,5 +2655,25 @@ const styles = StyleSheet.create({
   activeBottomTabText: {
     color: COLORS.main,
     fontFamily: FONTS.heading,
+  },
+  kbDoneBar: {
+    alignItems: 'flex-end',
+    backgroundColor: COLORS.background,
+    borderTopColor: COLORS.sub,
+    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  kbDoneBtn: {
+    backgroundColor: COLORS.main,
+    borderRadius: BASE_RADIUS,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+  },
+  kbDoneBtnText: {
+    color: COLORS.background,
+    fontFamily: FONTS.heading,
+    fontSize: 15,
+    fontWeight: '800',
   },
 });
