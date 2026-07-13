@@ -832,6 +832,11 @@ export default function App() {
             <SettingsLinkRow label="お問い合わせ" url={CONTACT_URL} />
             <SettingsRow label="アプリバージョン" value={APP_VERSION} />
           </View>
+          {purchaseMessage !== null && (
+            <View style={styles.purchaseMessageBox}>
+              <Text style={styles.purchaseMessageText}>{purchaseMessage}</Text>
+            </View>
+          )}
         </ScrollView>
       )}
 
@@ -2655,6 +2660,19 @@ const styles = StyleSheet.create({
   activeBottomTabText: {
     color: COLORS.main,
     fontFamily: FONTS.heading,
+  },
+  purchaseMessageBox: {
+    backgroundColor: COLORS.sub,
+    borderRadius: BASE_RADIUS,
+    marginTop: 12,
+    padding: BASE_SPACE,
+  },
+  purchaseMessageText: {
+    color: COLORS.text,
+    fontFamily: FONTS.body,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   kbDoneBar: {
     alignItems: 'flex-end',
