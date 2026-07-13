@@ -13,6 +13,12 @@
     "userInterfaceStyle": "light",
     "scheme": "shoudostopper",
     "newArchEnabled": true,
+    "updates": {
+      "url": "https://u.expo.dev/c934214f-712a-45f5-b651-dd59cdfc51dc"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
