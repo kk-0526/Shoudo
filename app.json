@@ -25,7 +25,7 @@
       "backgroundColor": "#FCFBF8"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.jikoukan.shoudostopper",
       "buildNumber": "1",
       "config": {
