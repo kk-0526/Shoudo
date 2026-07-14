@@ -42,6 +42,12 @@
 
 ---
 
+#### ⑦ ios.supportsTablet = false（コミット: c9adc28）✅
+- 全社標準（2026-07-14 葛西さん確定）に準拠
+- preflight WARN 消えたことを確認（android.package のみ残存・許容）
+
+---
+
 ### 未完了・ブロック中
 
 #### ④ react-native-keyboard-controller
