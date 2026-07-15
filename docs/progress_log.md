@@ -48,6 +48,31 @@
 
 ---
 
+#### ⑧ 課金済み状態の点検体制（2026-07-15）✅
+
+**実装内容：**
+- `App.tsx` に `DEBUG_FORCE_PREMIUM = false` デバッグスイッチを追加（350行目付近、Appコンポーネント外）
+- `hasProAccess` を `(__DEV__ && DEBUG_FORCE_PREMIUM) || isProPreview || isRevenueCatPro` に変更（本番ビルドへの影響なし）
+- `docs/iap_state_matrix.md` を新規作成：課金で変わる画面一覧表・grep突合・2周制点検チェックリスト・使い方手順
+
+**grep突合結果（`hasProAccess` 参照箇所）：**
+- `App.tsx:850` 履歴画面 → HistoryTeaser / HistoryList 切り替え
+- `App.tsx:874` パターン分析画面 → AnalysisTeaser / PatternAnalysis 切り替え
+- **実装漏れなし（一覧表と完全一致）**
+
+**設定画面「有料版を購入」ボタンについて：**
+- 課金済み後も表示したまま（RevenueCatが重複購入防止）→ 審査リジェクトリスクなし
+- 「購入済み」バッジへの変更は設計書記載なしのためPM確認事項として保留
+
+**⚠️ 目視確認が必要（葛西さんExpo Goで実施）：**
+1. `DEBUG_FORCE_PREMIUM = false` で全画面1周（無料状態）
+2. `DEBUG_FORCE_PREMIUM = true` に変更 → Expo Go再起動 → 全画面1周（課金済み状態）
+   - 履歴：HistoryListに切り替わることを確認
+   - パターン分析：PatternAnalysisに切り替わることを確認
+3. 確認後 `false` に戻す
+
+---
+
 ### 未完了・ブロック中
 
 #### ④ react-native-keyboard-controller

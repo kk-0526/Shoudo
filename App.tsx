@@ -347,6 +347,10 @@ function hasActiveProEntitlement(customerInfo: RevenueCatCustomerInfo): boolean 
   return customerInfo.entitlements.active[REVENUECAT_ENTITLEMENT_ID] !== undefined;
 }
 
+// 開発ビルド限定デバッグスイッチ（__DEV__=false の本番ビルドでは無効）
+// trueにするとRevenueCat購入なしで有料版UIを強制表示できる
+const DEBUG_FORCE_PREMIUM = false;
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     [FONTS.body]: NotoSansJP_400Regular,
@@ -377,7 +381,7 @@ export default function App() {
   const resultSlideY = useRef(new Animated.Value(24)).current;
   const [kbHeight, setKbHeight] = useState(0);
 
-  const hasProAccess = isProPreview || isRevenueCatPro;
+  const hasProAccess = (__DEV__ && DEBUG_FORCE_PREMIUM) || isProPreview || isRevenueCatPro;
 
   useEffect(() => {
     void refreshChecks();
