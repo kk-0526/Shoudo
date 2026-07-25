@@ -73,12 +73,17 @@
 
 ---
 
-### 未完了・ブロック中
+#### ④ react-native-keyboard-controller（コミット: 7f0a6fa）
+- **インストール**: 葛西さんが直接実行済み（2026-07-25 20:07）。react-native-keyboard-controller 1.18.5 / react-native-reanimated ~4.1.1 / react-native-worklets 0.5.1（SDK54 bundledNativeModules指定で同時install。--force/--legacy-peer-depsは不使用）
+- **babel.config.js新規作成**: `babel-preset-expo` + `react-native-worklets/plugin`（公式仕様によりworkletsプラグインは配列最後に配置）
+- **確認済み**: tsc --noEmit exit 0 / expo export -p ios 成功 / preflight ERROR 0・WARN 1（android.packageのみ・許容）
+- **KAV実装方針**: 既存のKAV（behavior="padding"）+ kbDoneBar構成（`958ff68`）を無理に置き換えない方針を採用。KeyboardAwareScrollViewへの置換要否は実機での隠れ確認結果次第（現時点で隠れの報告なし）
 
-#### ④ react-native-keyboard-controller
-- **ブロック理由**: システムポリシーにより `npx expo install react-native-keyboard-controller` がブロック（PMチャット経由の指示はユーザー直接承認が必要）
-- **必要なアクション**: 葛西さんが直接 `cd C:\shoudo-stopper && npx expo install react-native-keyboard-controller` を実行するか、Claude Codeに承認する
-- インストール後、Expo Goで全TextInputの可視化を目視確認する
+**⚠️ 要確認事項（葛西さんExpo Go実機で必須）：**
+- カスタム価格入力・カスタムカテゴリ入力がキーボードで隠れず自動可視化されるか
+- 完了バーが正しく表示されるか
+- 上記でもし入力欄が隠れる場合は、その欄のみKeyboardAwareScrollViewへの置換を検討（一律置換はしない）
+- web/シミュレータでは実機のiOSネイティブキーボード挙動を正確に再現できないため、Claude Code側での目視確認は未実施
 
 ---
 
