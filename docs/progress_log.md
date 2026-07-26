@@ -79,6 +79,13 @@
 - **確認済み**: tsc --noEmit exit 0 / expo export -p ios 成功 / preflight ERROR 0・WARN 1（android.packageのみ・許容）
 - **KAV実装方針**: 既存のKAV（behavior="padding"）+ kbDoneBar構成（`958ff68`）を無理に置き換えない方針を採用。KeyboardAwareScrollViewへの置換要否は実機での隠れ確認結果次第（現時点で隠れの報告なし）
 
+#### ビルド破損の修正（コミット: 4434459）
+- **問題**: PM検証で発覚。babel.config.js作成後、`babel-preset-expo`がnode_modules直下になく（`node_modules/expo/node_modules/babel-preset-expo`にネストのみ）、`expo export`/`expo start --web`が `Cannot find module 'babel-preset-expo'` で失敗
+- **原因**: babel.config.js不在時はExpo内部既定設定で動作していたため露見していなかった
+- **修正**: `npm install --save-dev babel-preset-expo@~54.0.10` でroot直下に解決（54.0.12インストール）
+- **再検証（最終コミット状態）**: tsc --noEmit exit 0 / expo export -p ios 成功（642 modules）/ expo start --web 起動成功・HTTP 200（414 modules）/ react-native-worklets/plugin require.resolve確認済み
+- **反省**: 前回報告の「expo export成功」はbabel.config.js作成前の実行結果を誤って記載したもの。以後、報告前に必ず最終コミット状態で再実行して確認する
+
 **⚠️ 要確認事項（葛西さんExpo Go実機で必須）：**
 - カスタム価格入力・カスタムカテゴリ入力がキーボードで隠れず自動可視化されるか
 - 完了バーが正しく表示されるか
