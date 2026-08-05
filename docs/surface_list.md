@@ -79,7 +79,7 @@ MealPick        AFTER_APPROVAL   30日チャレンジNote  AFTER_APPROVAL（審�
 | 13 | 主／副カテゴリ | 自動 `appInfos` relationships | 高 | 自動 | 降ろし済 | `asc_prerelease_check.js` に追加予定 | ✅FINANCE/LIFESTYLE |
 | 14 | copyright | 自動 `appStoreVersions` | 高 | 自動 | 降ろし済 | 同上 | ✅2026 KANJI KASAI |
 | 15 | 年齢レーティング宣言 | ✅**自動 `/v1/appInfos/{appInfoId}/ageRatingDeclaration`（属性29件）** | 高 | **自動** | ✅**降ろし済（8/4に訂正）** | 🔴**当初「APIで404・目視のみ」と書いたのは誤り。`/v1/apps/{id}/...` を叩いて404を見ただけだった。**正しくは `appInfos` のリレーション。**更新も `PATCH /v1/ageRatingDeclarations/{id}` で可能**（必須属性を全て渡す必要あり）。⚠️**医療関連の属性 `medicalOrTreatmentInformation` `healthOrWellnessTopics` も実在**＝ヘルスケア系でも葛西さんのASCログインは不要 | 全属性null（未入力） |
-| 16 | contentRightsDeclaration | ⚠️**API不可** | ⚠️**公開済みアプリでも「未設定」と返る＝取れないだけ** | **PM** | **未検討** | ⚠️**チェック項目に入れると全アプリで永久に❌＝入れないと判断済（7/30）** | 未確認 |
+| 16 | 🔴**contentRightsDeclaration（第三者コンテンツの申告）＝提出ブロッカー** | ✅**自動 `GET /v1/apps?fields[apps]=contentRightsDeclaration`** | 高 | **自動** | ✅**降ろし済（8/5に訂正）** | 🔴**当部は7/30・8/4の2回この項目を読み違えました。**`appInfos` の属性を見ていましたが**正しくは `apps` の属性**です。「取れない」ではなく「**取れる・値がnull＝未設定**」でした。⚠️**未設定だと提出できません**（PM第三部が8/1に実際に足止め）。設定も `PATCH /v1/apps/{id}` で可能＝葛西さんのASCログイン不要 | ✅**USES_THIRD_PARTY_CONTENT**（8/5設定・葛西さん判断） |
 
 ## D. 課金の状態（3面）
 
@@ -150,7 +150,19 @@ MealPick        AFTER_APPROVAL   30日チャレンジNote  AFTER_APPROVAL（審�
 | **#33 Expo Goでの実起動** | 未検証 | 🔴**葛西さん**（撮影の最初のステップとして実施） |
 | #17 課金アイテムのstate | ❌MISSING_METADATA（原因は#18a） | #18aが済めば解消 |
 | #12 UIの金額表記 | ⚠️削除予定 | 事業部（AdMob実装と同時） |
-| #16 contentRights／#20 App Privacy申告 | 未確認・**降ろせるか未検討** | PM（**#15と同じ探し方＝リレーションの `links.related` を読む**で再探索する） |
+| ~~#16 contentRights~~ | ✅**8/5に解消**（`USES_THIRD_PARTY_CONTENT`） | — |
+| #20 App Privacy申告 | 未確認・**降ろせるか未検討** | PM（**#15・#16と同じ探し方＝正しいリソースを特定する**で再探索する） |
+
+## 🔴 提出ブロッカー4点（全社標準 R11・PM第三部が8/1に実際に足止め）
+**面リストに入っていなかったため、8/4にPM第三部の指摘で追加しました。**
+| # | 項目 | 衝動買い |
+|---|---|---|
+| R11-1 | App価格スケジュール（**無料アプリでも明示設定が必要**） | ✅設定あり |
+| R11-2 | contentRightsDeclaration | ✅**USES_THIRD_PARTY_CONTENT**（8/5） |
+| R11-3 | copyright | ✅2026 KANJI KASAI |
+| R11-4 | 規制対象の医療用デバイス申告 | ✅**対象外**（FINANCE/LIFESTYLE） |
+
+⚠️**R11-4の発動条件（画面の全文・PM第三部が8/4に確認）**＝「メディカル」または「ヘルスケア／フィットネス」カテゴリに該当する場合、**または年齢制限指定の質問票で「医療または治療に関する情報」に「頻繁」を選択した場合**。🔴**「特定の地域でApp Storeでの配信を継続するには」＝提出時だけでなく公開後も効きます。**
 
 🔴**葛西さんに残るのは3工程だけ**＝**#11a・#18aの撮影と、#33の実起動確認。すべて実機が必要で物理的に降ろせないものです。**
 **撮影は1セッションで完結します**（起動確認→記録5件入力→ストア用5枚→設定画面1枚）。
